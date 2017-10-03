@@ -193,7 +193,7 @@ struct ieee80211_Acknowledgement
 struct ieee80211_Data
 {
     struct ieee80211_common c;
-    uint8_t Receiver_addr[6];
+    uint8_t STA[6];
     uint8_t BSSID[6];
     uint8_t Src_addr[6];
 

@@ -7,7 +7,7 @@ typedef struct value_beacon
     uint current_channel;
     uint8_t ESSID[32]{0};
     uint beacon_cnt{0};
-
+    uint Data_cnt{0};
 }__attribute__((packed))vbea;
 
 
@@ -21,7 +21,7 @@ typedef struct STA_VALUE
 {
     uint8_t bssid[6];
     uint frames_cnt;
-    uint8_t PROBE[32]{0};
+    uint8_t PROBE_name[32]{0};
 }__attribute__((packed))STA_value;
 
 

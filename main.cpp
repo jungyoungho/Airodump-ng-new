@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
                 packet += radio_h->header_len;
                 struct ieee80211_common *common = (struct ieee80211_common *)packet;
                 memset(value_bea.ESSID,0,32);
-                memset(value_sta.PROBE,0,32);
+                memset(value_sta.PROBE_name,0,32);
                 if(common->Type == 0)
                 {
                     switch(common->Sutype)
@@ -240,6 +240,11 @@ int main(int argc, char *argv[])
                 {
                     switch (common->Sutype)
                     {
+                        case 0: //DATA
+                        {
+                                //얘는 갯수만 필요!! Beacon value
+                        }
+                        break;
                         case 4: //NULL FUCNTION
                         {
                             struct ieee80211_Null_function *N_func = (struct ieee80211_Null_function *)packet;
@@ -260,9 +265,6 @@ int main(int argc, char *argv[])
                  memcpy(bssid_key.save_bssid,k.save_bssid,6);
                  value_bea.current_channel=v.current_channel;
                  memcpy(value_bea.ESSID,v.ESSID,ESSID_LEN);
-                 //################## QOS DATA ################### //start here go map but thinking!!
-                 memcpy(value_sta.PROBE,pv.ESSID,pv_LEN); //probe res essid save
-                 memcpy(value_sta.PROBE,pqv.ESSID,pqv_LEN); //probe req essid save
                  //###################### map ######################
                  mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
                  //system("clear");
@@ -278,6 +280,12 @@ int main(int argc, char *argv[])
                  }
                  printf("\n\n");
                  */
+                 //################## QOS DATA ################### //start here go map but thinking!!
+                 memcpy(value_sta.PROBE_name,pv.ESSID,pv_LEN); //probe res essid value save
+                 cout <<value_sta.PROBE_name<<endl;
+
+                 memcpy(value_sta.PROBE_name,pqv.ESSID,pqv_LEN); //probe req essid value save
+                 cout <<value_sta.PROBE_name<<endl;
             }
             else if(res==0)
             {
