@@ -4,6 +4,7 @@
 #include <map>
 #include <unistd.h>
 #include "key.h"
+#include "sta_key.h"
 #include "necessary_header.h"
 #include "value.h"
 using namespace std;
@@ -34,8 +35,8 @@ int main(int argc, char *argv[])
         int res;
 
         struct key k;
+        struct sta_key ks;
         struct value_beacon v,pv,pqv;
-        struct STA_KEY sk,nk;
         struct STA_VALUE sv,nv;
         //######beacon map#######
         map <key,vbea> mapbea;
@@ -44,11 +45,11 @@ int main(int argc, char *argv[])
         key bssid_key;
         vbea value_bea;
         //######station map#######
-        map <STA_key,STA_value> mapsta;
-        map <STA_key,STA_value> ::iterator sta_it;
+        map <sta_key,SV> mapsta;
+        map <sta_key,SV> ::iterator sta_it;
 
-        STA_key key_sta;    //NULL & QOS DATA
-        STA_value value_sta; // NULL & QOS DATA BSSID, FRAME CNT, PROBE ESSID
+        sta_key key_sta;    //NULL & QOS DATA
+        SV value_sta; // NULL & QOS DATA BSSID, FRAME CNT, PROBE ESSID
 
 
         value_bea.current_channel=0;
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
                             else
                             {
                                 value_bea.beacon_cnt = 0;
-                                mapbea.insert(pair<key,vbea>(bssid_key,value_bea)); //이부분 띵킹좀 왜냐하면 ff ff 00 00 0 00 이나옴
+                                mapbea.insert(pair<key,vbea>(bssid_key,value_bea)); //이 부분 띵킹좀 왜냐하면 ff ff 00 00 0 00 이나옴 error
                             }
                             //cout <<"Beacon Frame" <<endl;
                             struct ieee80211_Beacon_frame *Beacon_f = (struct ieee80211_Beacon_frame *)packet;
@@ -242,21 +243,39 @@ int main(int argc, char *argv[])
                     {
                         case 0: //DATA
                         {
+                                if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
+                                {
+                                      bea_it->second.Data_cnt+= 1;
+                                }
+                                else
+                                {
+                                    value_bea.Data_cnt = 0;
+                                    mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+                                }
                                 //얘는 갯수만 필요!! Beacon value
                         }
                         break;
                         case 4: //NULL FUCNTION
                         {
                             struct ieee80211_Null_function *N_func = (struct ieee80211_Null_function *)packet;
-                            memcpy(nk.STA,N_func->STA,6);
-                            memcpy(nv.bssid,N_func->BSSID,6);
+                            memcpy(ks.STA,N_func->STA,6);
+                            memcpy(value_sta.bssid,N_func->BSSID,6); //sv use??
                         }
                         break;
                         case 8: //QOS DATA
                         {
+                            if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
+                            {
+                                  bea_it->second.Data_cnt+= 1;
+                            }
+                            else
+                            {
+                                value_bea.Data_cnt = 0;
+                                mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+                            }
                             struct ieee80211_Qos_Data *QData = (struct ieee80211_Qos_Data *)packet;
-                            memcpy(sk.STA,QData->STA,6);
-                            memcpy(sv.bssid,QData->BSSID,6);
+                            memcpy(ks.STA,QData->STA,6);
+                            memcpy(value_sta.bssid,QData->BSSID,6);  //sv use??
                         }
                         break;
                     }
@@ -267,25 +286,36 @@ int main(int argc, char *argv[])
                  memcpy(value_bea.ESSID,v.ESSID,ESSID_LEN);
                  //###################### map ######################
                  mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
-                 //system("clear");
-                 /*
-                 cout << "BSSID                   Beacons         CH      ESSID\n"<<endl;
+                 system("clear");
+
+                 cout << "BSSID                   Beacons   #Data      CH      ESSID\n"<<endl;
                  for(bea_it = mapbea.begin(); bea_it!=mapbea.end(); advance(bea_it,1))
                  {
                      for(int i=0; i<6; i++)
                         printf("%02X ",bea_it->first.save_bssid[i]);
                      cout <<"\t" << bea_it->second.beacon_cnt;
-                     cout <<"\t\t" << bea_it->second.current_channel;
-                     cout <<"\t"<< bea_it->second.ESSID<< endl;
+                     cout <<"\t  " << bea_it->second.Data_cnt;
+                     cout <<"\t     " << bea_it->second.current_channel;
+                     cout <<"\t     "<< bea_it->second.ESSID<< endl;
                  }
                  printf("\n\n");
-                 */
-                 //################## QOS DATA ################### //start here go map but thinking!!
-                 memcpy(value_sta.PROBE_name,pv.ESSID,pv_LEN); //probe res essid value save
-                 cout <<value_sta.PROBE_name<<endl;
 
-                 memcpy(value_sta.PROBE_name,pqv.ESSID,pqv_LEN); //probe req essid value save
-                 cout <<value_sta.PROBE_name<<endl;
+                 //################## QOS DATA ################### //start here go map but thinking!!
+                 memcpy(key_sta.STA,ks.STA,6);
+                 //memcpy(value_sta.PROBE_name,pv.ESSID,pv_LEN); //probe res essid value save  probe와 어떻게 매칭시킬것인지 생각해보기
+                 //memcpy(value_sta.PROBE_name,pqv.ESSID,pqv_LEN); //probe req essid value save  probe와 어떻게 매칭시킬것인지 생각해보기
+                 mapsta.insert(pair<sta_key,SV>(key_sta,value_sta));
+
+/*
+                 for(sta_it = mapsta.begin(); sta_it!=mapsta.end(); advance(sta_it,1))
+                 {
+                     for(int i=0; i<6; i++)
+                         printf("%02X ",sta_it->first.STA[i]); //key 에 sta값 들어간건 성공했는데 value bssid도 이런식으로 만들어줘야할듯
+                     cout << endl;
+
+                 }
+                 */
+
             }
             else if(res==0)
             {
