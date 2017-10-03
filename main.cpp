@@ -6,7 +6,6 @@
 #include "key.h"
 #include "necessary_header.h"
 #include "value.h"
-
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -33,17 +32,30 @@ int main(int argc, char *argv[])
         struct pcap_pkthdr *pkthdr;
         const u_char *packet;
         int res;
-        struct key k;
-        struct value_beacon v;
 
+        struct key k;
+        struct value_beacon v,pv,pqv;
+        struct STA_KEY sk,nk;
+        struct STA_VALUE sv,nv;
+        //######beacon map#######
         map <key,vbea> mapbea;
         map <key,vbea>::iterator bea_it;
+
         key bssid_key;
         vbea value_bea;
+        //######station map#######
+        map <STA_key,STA_value> mapsta;
+        map <STA_key,STA_value> ::iterator sta_it;
+
+        STA_key key_sta;    //NULL & QOS DATA
+        STA_value value_sta; // NULL & QOS DATA BSSID, FRAME CNT, PROBE ESSID
+
+
         value_bea.current_channel=0;
         while((res=pcap_next_ex(pcd, &pkthdr, &packet))>=0)
         {
-            int ESSID_LEN=0;
+            int ESSID_LEN=0,pv_LEN=0,pqv_LEN=0;
+
             if(res==1)
             {
                 int packet_len = pkthdr->len;
@@ -51,6 +63,7 @@ int main(int argc, char *argv[])
                 packet += radio_h->header_len;
                 struct ieee80211_common *common = (struct ieee80211_common *)packet;
                 memset(value_bea.ESSID,0,32);
+                memset(value_sta.PROBE,0,32);
                 if(common->Type == 0)
                 {
                     switch(common->Sutype)
@@ -134,30 +147,137 @@ int main(int argc, char *argv[])
                             }
                         }
                         break;
-                        case 5:
+                        case 4: // probe request -> QOS's STA is key!!
                         {
-
+                            //struct ieee80211_Probe_Request *Probe_Req = (struct ieee80211_Probe_Request*)packet;
+                            packet += sizeof(struct ieee80211_Probe_Request);
+                            int a{0};
+                            while(packet_len>0)
+                            {
+                                if(a==1)
+                                    break;
+                                struct Tagpara_common *T_common = (struct Tagpara_common *)packet;
+                                if(T_common->TagLen==0) //SSID가 없을 때가 있음
+                                    break;
+                                switch (T_common->TagNum)
+                                {
+                                    case 0:
+                                    {
+                                        if(a==1)
+                                            break;
+                                        packet += sizeof(struct Tagpara_common);
+                                        pqv_LEN =T_common->TagLen;
+                                        memcpy(pqv.ESSID,packet,T_common->TagLen);
+                                        if(packet_len < T_common->TagLen)
+                                            break;
+                                        else if(T_common->TagLen!=0)
+                                        {
+                                           packet += T_common->TagLen;
+                                           packet_len -= T_common->TagLen;
+                                        }
+                                        a=1;//check point
+                                    }
+                                    break;
+                                    default:
+                                    {
+                                         packet += sizeof(struct Tagpara_common);
+                                         packet += T_common->TagLen;
+                                         packet_len -=T_common->TagLen;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                        case 5:  //probe response -> QOS's STA is key!!
+                        {
+                            //struct ieee80211_Probe_Response *Probe_Res = (struct ieee80211_Probe_Response *)packet;
+                            packet += sizeof(struct ieee80211_Probe_Response) + sizeof(struct ieee80211_wireless_LAN_mg_Beacon);
+                            int a{0};
+                            while(packet_len>0)
+                            {
+                                if(a==1)
+                                    break;
+                                struct Tagpara_common *T_common = (struct Tagpara_common *)packet;
+                                switch (T_common->TagNum)
+                                {
+                                    case 0:
+                                    {
+                                        if(a==1)
+                                            break;
+                                        pv_LEN=T_common->TagLen;
+                                        packet +=sizeof(struct Tagpara_common);
+                                        memcpy(pv.ESSID,packet,T_common->TagLen);
+                                        if(packet_len < T_common->TagLen)
+                                            break;
+                                        else if(T_common->TagLen!=0)
+                                        {
+                                           packet += T_common->TagLen;
+                                           packet_len -= T_common->TagLen;
+                                        }
+                                        a=1;//check point
+                                    }
+                                    break;
+                                    default:
+                                    {
+                                        packet += sizeof(struct Tagpara_common);
+                                        if(packet_len < T_common->TagLen)
+                                            break;
+                                        else if(T_common->TagLen!=0)
+                                        {
+                                            packet += T_common->TagLen;
+                                            packet_len -= T_common->TagLen;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
                         }
                         break;
                     }
                  }
+                else if(common->Type==2)
+                {
+                    switch (common->Sutype)
+                    {
+                        case 4: //NULL FUCNTION
+                        {
+                            struct ieee80211_Null_function *N_func = (struct ieee80211_Null_function *)packet;
+                            memcpy(nk.STA,N_func->STA,6);
+                            memcpy(nv.bssid,N_func->BSSID,6);
+                        }
+                        break;
+                        case 8: //QOS DATA
+                        {
+                            struct ieee80211_Qos_Data *QData = (struct ieee80211_Qos_Data *)packet;
+                            memcpy(sk.STA,QData->STA,6);
+                            memcpy(sv.bssid,QData->BSSID,6);
+                        }
+                        break;
+                    }
+                }
+                 //################## BEACON ###################
                  memcpy(bssid_key.save_bssid,k.save_bssid,6);
                  value_bea.current_channel=v.current_channel;
                  memcpy(value_bea.ESSID,v.ESSID,ESSID_LEN);
-
-//###################### map ######################
+                 //################## QOS DATA ################### //start here go map but thinking!!
+                 memcpy(value_sta.PROBE,pv.ESSID,pv_LEN); //probe res essid save
+                 memcpy(value_sta.PROBE,pqv.ESSID,pqv_LEN); //probe req essid save
+                 //###################### map ######################
                  mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
-                 system("clear");
+                 //system("clear");
+                 /*
                  cout << "BSSID                   Beacons         CH      ESSID\n"<<endl;
                  for(bea_it = mapbea.begin(); bea_it!=mapbea.end(); advance(bea_it,1))
                  {
                      for(int i=0; i<6; i++)
                         printf("%02X ",bea_it->first.save_bssid[i]);
                      cout <<"\t" << bea_it->second.beacon_cnt;
-                     cout <<"\t\t" <<bea_it->second.current_channel;
-                     cout <<"\t"<< bea_it->second.ESSID<<endl;
+                     cout <<"\t\t" << bea_it->second.current_channel;
+                     cout <<"\t"<< bea_it->second.ESSID<< endl;
                  }
                  printf("\n\n");
+                 */
             }
             else if(res==0)
             {
