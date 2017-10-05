@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include "key.h"
 #include "sta_key.h"
+#include "sta_value.h"
 #include "necessary_header.h"
 #include "value.h"
 using namespace std;
@@ -35,9 +36,9 @@ int main(int argc, char *argv[])
         int res;
 
         struct key k;
-        struct sta_key ks;
+        struct sta_key qk;
         struct value_beacon v,pv,pqv;
-        struct STA_VALUE sv,nv;
+        struct sta_value qv;
         //######beacon map#######
         map <key,vbea> mapbea;
         map <key,vbea>::iterator bea_it;
@@ -45,11 +46,11 @@ int main(int argc, char *argv[])
         key bssid_key;
         vbea value_bea;
         //######station map#######
-        map <sta_key,SV> mapsta;
-        map <sta_key,SV> ::iterator sta_it;
+        map <sta_key,sta_value> mapsta;
+        map <sta_key,sta_value> ::iterator sta_it;
 
         sta_key key_sta;    //NULL & QOS DATA
-        SV value_sta; // NULL & QOS DATA BSSID, FRAME CNT, PROBE ESSID
+        sta_value value_sta; // NULL & QOS DATA BSSID, FRAME CNT, PROBE ESSID
 
 
         value_bea.current_channel=0;
@@ -258,34 +259,65 @@ int main(int argc, char *argv[])
                         case 4: //NULL FUCNTION
                         {
                             struct ieee80211_Null_function *N_func = (struct ieee80211_Null_function *)packet;
-                            memcpy(ks.STA,N_func->STA,6);
-                            memcpy(value_sta.bssid,N_func->BSSID,6); //sv use??
+                            memcpy(qk.STA,N_func->STA,6);
+                            memcpy(qv.bssid,N_func->BSSID,6);
                         }
                         break;
                         case 8: //QOS DATA
                         {
-                            if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
+                            switch (common->Ds)
                             {
-                                  bea_it->second.Data_cnt+= 1;
+                                case 1:
+                                {
+                                    struct ieee80211_Qos_Data41 *QData = (struct ieee80211_Qos_Data41 *)packet;
+
+                                    memcpy(qk.STA,QData->STA,6);
+                                    memcpy(qv.bssid,QData->BSSID,6);
+
+                                    if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
+                                    {
+                                          bea_it->second.Data_cnt+= 1;
+
+                                    }
+                                    else
+                                    {
+                                        value_bea.Data_cnt = 0;
+                                        mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+                                    }
+                                }
+                                break;
+                                case 2:
+                                {
+                                    struct ieee80211_Qos_Data42 *QData = (struct ieee80211_Qos_Data42 *)packet;
+
+                                    memcpy(qk.STA,QData->STA,6);
+                                    memcpy(qv.bssid,QData->BSSID,6);
+
+                                    if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
+                                    {
+                                          bea_it->second.Data_cnt+= 1;
+
+                                    }
+                                    else
+                                    {
+                                        value_bea.Data_cnt = 0;
+                                        mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+                                    }
+                                }
+                                break;
                             }
-                            else
-                            {
-                                value_bea.Data_cnt = 0;
-                                mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
-                            }
-                            struct ieee80211_Qos_Data *QData = (struct ieee80211_Qos_Data *)packet;
-                            memcpy(ks.STA,QData->STA,6);
-                            memcpy(value_sta.bssid,QData->BSSID,6);  //sv use??
                         }
                         break;
                     }
                 }
+
                  //################## BEACON ###################
                  memcpy(bssid_key.save_bssid,k.save_bssid,6);
                  value_bea.current_channel=v.current_channel;
                  memcpy(value_bea.ESSID,v.ESSID,ESSID_LEN);
                  //###################### map ######################
                  mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+
                  system("clear");
 
                  cout << "BSSID                   Beacons   #Data      CH      ESSID\n"<<endl;
@@ -299,23 +331,30 @@ int main(int argc, char *argv[])
                      cout <<"\t     "<< bea_it->second.ESSID<< endl;
                  }
                  printf("\n\n");
+                 //data finish
 
                  //################## QOS DATA ################### //start here go map but thinking!!
-                 memcpy(key_sta.STA,ks.STA,6);
+
+                 memcpy(key_sta.STA,qk.STA,6);
+                 memcpy(value_sta.bssid,qv.bssid,6);
                  //memcpy(value_sta.PROBE_name,pv.ESSID,pv_LEN); //probe res essid value save  probe와 어떻게 매칭시킬것인지 생각해보기
                  //memcpy(value_sta.PROBE_name,pqv.ESSID,pqv_LEN); //probe req essid value save  probe와 어떻게 매칭시킬것인지 생각해보기
-                 mapsta.insert(pair<sta_key,SV>(key_sta,value_sta));
+                 mapsta.insert(pair<sta_key,sta_value>(key_sta,value_sta));
 
-/*
+                 cout << "BSSID                   STATION              Frames  Probe\n"<<endl;
                  for(sta_it = mapsta.begin(); sta_it!=mapsta.end(); advance(sta_it,1))
                  {
                      for(int i=0; i<6; i++)
-                         printf("%02X ",sta_it->first.STA[i]); //key 에 sta값 들어간건 성공했는데 value bssid도 이런식으로 만들어줘야할듯
+                         printf("%02X ",sta_it->second.bssid[i]);
+                     cout <<"\t";
+
+                     for(int i=0; i<6; i++)
+                         printf("%02X ",sta_it->first.STA[i]);
+
+                     cout <<"   "<< sta_it->second.frames_cnt ;
+                     cout <<"\t     "<< sta_it->second.PROBE_name;
                      cout << endl;
-
                  }
-                 */
-
             }
             else if(res==0)
             {
@@ -338,3 +377,4 @@ int main(int argc, char *argv[])
         pcap_close(pcd);
         return 0;
 }
+//DATA 갯수가 다르게나오고 BEACON도 오차 1개정도남 그리고 BEACON에서 자꾸 이상한 BSSID가 KEY로 들어가는오류가잇음

@@ -5,10 +5,12 @@ CONFIG -= qt
 LIBS += -lpcap
 SOURCES += main.cpp \
     key.cpp \
-    sta_key.cpp
+    sta_key.cpp \
+    sta_value.cpp
 
 HEADERS += \
     necessary_header.h \
     key.h \
     value.h \
-    sta_key.h
+    sta_key.h \
+    sta_value.h

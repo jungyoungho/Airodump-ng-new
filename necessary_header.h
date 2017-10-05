@@ -85,6 +85,14 @@ struct ieee80211_common
     uint8_t version:2;
     uint8_t Type:2;
     uint8_t Sutype:4;
+    //flags
+    uint8_t Ds:2;
+    uint8_t more:1;
+    uint8_t retry:1;
+    uint8_t pwr:1;
+    uint8_t more2:1;
+    uint8_t protect:1;
+    uint8_t order:1;
 
     uint16_t Duration;
 };
@@ -133,11 +141,24 @@ struct ieee80211_Beacon_frame
     uint16_t Fragment_num:4;
     uint16_t Sequence_num:12;
 };
-struct ieee80211_Qos_Data
+struct ieee80211_Qos_Data41
 {
     struct ieee80211_common c;
     uint8_t BSSID[6];
     uint8_t STA[6];
+    uint8_t Dst_addr[6];
+
+    uint16_t Fragment_num:4;
+    uint16_t Sequence_num:12;
+
+    uint16_t Qos_Control;
+    uint16_t CCMP_para;
+};
+struct ieee80211_Qos_Data42
+{
+    struct ieee80211_common c;
+    uint8_t STA[6];
+    uint8_t BSSID[6];
     uint8_t Dst_addr[6];
 
     uint16_t Fragment_num:4;

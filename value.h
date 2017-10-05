@@ -13,12 +13,6 @@ typedef struct value_beacon
 
 
 
-typedef struct STA_VALUE
-{
-    uint8_t bssid[6];
-    uint frames_cnt;
-    uint8_t PROBE_name[32]{0};
-}__attribute__((packed))SV;
 
 
 #endif // VALUE_H
