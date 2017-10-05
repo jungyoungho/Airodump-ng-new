@@ -8,6 +8,7 @@
 #include "sta_value.h"
 #include "necessary_header.h"
 #include "value.h"
+
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
 
         struct key k;
         struct sta_key qk;
-        struct value_beacon v,pv,pqv;
+        struct value_beacon v,pv;
         struct sta_value qv;
         //######beacon map#######
         map <key,vbea> mapbea;
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
         value_bea.current_channel=0;
         while((res=pcap_next_ex(pcd, &pkthdr, &packet))>=0)
         {
-            int ESSID_LEN=0,pv_LEN=0,pqv_LEN=0;
+            int ESSID_LEN=0,pqv_LEN=0;
 
             if(res==1)
             {
@@ -151,7 +152,9 @@ int main(int argc, char *argv[])
                         break;
                         case 4: // probe request -> QOS's STA is key!!
                         {
-                            //struct ieee80211_Probe_Request *Probe_Req = (struct ieee80211_Probe_Request*)packet;
+                            struct ieee80211_Probe_Request *Probe_Req = (struct ieee80211_Probe_Request*)packet;
+                            memcpy(qk.STA,Probe_Req->Src_addr,6);
+                            memcpy(qv.bssid,Probe_Req->BSSID,6);
                             packet += sizeof(struct ieee80211_Probe_Request);
                             int a{0};
                             while(packet_len>0)
@@ -169,7 +172,7 @@ int main(int argc, char *argv[])
                                             break;
                                         packet += sizeof(struct Tagpara_common);
                                         pqv_LEN =T_common->TagLen;
-                                        memcpy(pqv.ESSID,packet,T_common->TagLen);
+                                        memcpy(qv.PROBE_name,packet,T_common->TagLen);
                                         if(packet_len < T_common->TagLen)
                                             break;
                                         else if(T_common->TagLen!=0)
@@ -180,6 +183,7 @@ int main(int argc, char *argv[])
                                         a=1;//check point
                                     }
                                     break;
+
                                     default:
                                     {
                                          packet += sizeof(struct Tagpara_common);
@@ -191,9 +195,12 @@ int main(int argc, char *argv[])
                             }
                         }
                         break;
+                        /*
                         case 5:  //probe response -> QOS's STA is key!!
                         {
-                            //struct ieee80211_Probe_Response *Probe_Res = (struct ieee80211_Probe_Response *)packet;
+                            struct ieee80211_Probe_Response *Probe_Res = (struct ieee80211_Probe_Response *)packet;
+                            memcpy(qk.STA,Probe_Res->Dst_addr,6);
+                            memcpy(qv.bssid,Probe_Res->BSSID,6);
                             packet += sizeof(struct ieee80211_Probe_Response) + sizeof(struct ieee80211_wireless_LAN_mg_Beacon);
                             int a{0};
                             while(packet_len>0)
@@ -207,9 +214,9 @@ int main(int argc, char *argv[])
                                     {
                                         if(a==1)
                                             break;
-                                        pv_LEN=T_common->TagLen;
+                                        pqv_LEN=T_common->TagLen;
                                         packet +=sizeof(struct Tagpara_common);
-                                        memcpy(pv.ESSID,packet,T_common->TagLen);
+                                        memcpy(qv.PROBE_name,packet,T_common->TagLen);
                                         if(packet_len < T_common->TagLen)
                                             break;
                                         else if(T_common->TagLen!=0)
@@ -236,6 +243,7 @@ int main(int argc, char *argv[])
                             }
                         }
                         break;
+                        */
                     }
                  }
                 else if(common->Type==2)
@@ -261,6 +269,15 @@ int main(int argc, char *argv[])
                             struct ieee80211_Null_function *N_func = (struct ieee80211_Null_function *)packet;
                             memcpy(qk.STA,N_func->STA,6);
                             memcpy(qv.bssid,N_func->BSSID,6);
+                            if((sta_it = mapsta.find(key_sta))!=mapsta.end())
+                            {
+                                  sta_it->second.frames_cnt+= 1;
+                            }
+                            else
+                            {
+                                value_sta.frames_cnt = 0;
+                                mapsta.insert(pair<sta_key,sta_value>(key_sta,value_sta));
+                            }
                         }
                         break;
                         case 8: //QOS DATA
@@ -277,12 +294,20 @@ int main(int argc, char *argv[])
                                     if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
                                     {
                                           bea_it->second.Data_cnt+= 1;
-
                                     }
                                     else
                                     {
                                         value_bea.Data_cnt = 0;
                                         mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+                                    }
+                                    if((sta_it = mapsta.find(key_sta))!=mapsta.end())
+                                    {
+                                          sta_it->second.frames_cnt+= 1;
+                                    }
+                                    else
+                                    {
+                                        value_sta.frames_cnt = 0;
+                                        mapsta.insert(pair<sta_key,sta_value>(key_sta,value_sta));
                                     }
                                 }
                                 break;
@@ -296,12 +321,20 @@ int main(int argc, char *argv[])
                                     if((bea_it = mapbea.find(bssid_key))!=mapbea.end())
                                     {
                                           bea_it->second.Data_cnt+= 1;
-
                                     }
                                     else
                                     {
                                         value_bea.Data_cnt = 0;
                                         mapbea.insert(pair<key,vbea>(bssid_key,value_bea));
+                                    }
+                                    if((sta_it = mapsta.find(key_sta))!=mapsta.end())
+                                    {
+                                          sta_it->second.frames_cnt+= 1;
+                                    }
+                                    else
+                                    {
+                                        value_sta.frames_cnt = 0;
+                                        mapsta.insert(pair<sta_key,sta_value>(key_sta,value_sta));
                                     }
                                 }
                                 break;
@@ -337,8 +370,7 @@ int main(int argc, char *argv[])
 
                  memcpy(key_sta.STA,qk.STA,6);
                  memcpy(value_sta.bssid,qv.bssid,6);
-                 //memcpy(value_sta.PROBE_name,pv.ESSID,pv_LEN); //probe res essid value save  probe와 어떻게 매칭시킬것인지 생각해보기
-                 //memcpy(value_sta.PROBE_name,pqv.ESSID,pqv_LEN); //probe req essid value save  probe와 어떻게 매칭시킬것인지 생각해보기
+                 memcpy(value_sta.PROBE_name,qv.PROBE_name,pqv_LEN);
                  mapsta.insert(pair<sta_key,sta_value>(key_sta,value_sta));
 
                  cout << "BSSID                   STATION              Frames  Probe\n"<<endl;

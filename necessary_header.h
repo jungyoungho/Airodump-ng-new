@@ -112,7 +112,7 @@ struct ieee80211_Null_function
 struct ieee80211_Probe_Request //beacon frame 와 Probe response랑 구조가 같음 나중에 완성하고 따로둘 필요없으면 합치자
 {
     struct ieee80211_common c;
-    uint8_t Receiver_addr[6];
+    uint8_t Dst_addr[6];
     uint8_t Src_addr[6];
     uint8_t BSSID[6];
 
@@ -123,7 +123,7 @@ struct ieee80211_Probe_Request //beacon frame 와 Probe response랑 구조가 �
 struct ieee80211_Probe_Response
 {
     struct ieee80211_common c;
-    uint8_t Receiver_addr[6];
+    uint8_t Dst_addr[6];
     uint8_t Src_addr[6];
     uint8_t BSSID[6];
 
