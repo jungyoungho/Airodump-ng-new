@@ -4,9 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 LIBS += -lpcap
 SOURCES += main.cpp \
-    key.cpp \
-    sta_key.cpp \
-    sta_value.cpp
+    key.cpp
 
 HEADERS += \
     necessary_header.h \
