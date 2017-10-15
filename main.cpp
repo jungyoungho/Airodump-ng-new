@@ -409,4 +409,3 @@ int main(int argc, char *argv[])
         pcap_close(pcd);
         return 0;
 }
-//DATA 갯수가 다르게나오고 BEACON도 오차 1개정도남 그리고 BEACON에서 자꾸 이상한 BSSID가 KEY로 들어가는오류가잇음
